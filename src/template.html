@@ -1,0 +1,1004 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lyon par cœur</title>
+<meta name="description" content="Learn the streets and arrondissements of Lyon: find streets on a blank map, name highlighted streets, tap districts, with an optional timer.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231d3a5c'/%3E%3Crect x='3' y='3' width='26' height='26' fill='none' stroke='%23f4f7f8' stroke-width='1.5'/%3E%3Ctext x='16' y='22' font-family='Arial' font-weight='700' font-size='15' text-anchor='middle' fill='%23f4f7f8'%3ELY%3C/text%3E%3C/svg%3E">
+<style>
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: border-box; height: 100%; }
+body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one framed instrument. Every region shares 1px hairlines, no gaps, no rounding.
+   Wide: study panel left, map right. Narrow: map on top, panel below. */
+:root {
+  --bg: #e9edef;
+  --panel: #fafbfb;
+  --panel-2: #eef1f2;
+  --ink: #172026;
+  --muted: #5a6870;
+  --line: #cfd7db;
+  --map-bg: #f3f5f4;
+  --arr-fill: #e6ebe8;
+  --arr-focus: #fbfcfb;
+  --arr-dim: #dde3e0;
+  --arr-line: #a3aeb3;
+  --arr-band: #dbe2de;
+  --arr-label: #7f8b92;
+  --street-major: #5b6870;
+  --street: #a7b1b6;
+  --street-ped: #98a3a8;
+  --rhone: #94bddf;
+  --saone: #9ac8bf;
+  --accent: #b3261e;
+  --accent-ink: #ffffff;
+  --good: #2c7a4b;
+  --good-soft: rgba(44, 122, 75, .22);
+  --bad: #b3261e;
+  --bad-soft: rgba(179, 38, 30, .18);
+  --wrong-street: #c27a12;
+  --pick: #6b3fd4;
+  --plaque: #1d3a5c;
+  --plaque-ink: #f4f7f8;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1417; --panel: #161d21; --panel-2: #1e272c; --ink: #e4eaed; --muted: #95a3aa; --line: #2a353b;
+    --map-bg: #12181b; --arr-fill: #192125; --arr-focus: #1f292e; --arr-dim: #141b1e;
+    --arr-line: #3d4a51; --arr-band: #1d272b; --arr-label: #64737b; --street-major: #83919a; --street: #3f4b51;
+    --street-ped: #56636a; --rhone: #22405a; --saone: #224641; --accent: #f0645a; --accent-ink: #1a0d0c;
+    --good: #5cc088; --good-soft: rgba(92, 192, 136, .22); --bad: #f0645a; --bad-soft: rgba(240, 100, 90, .2);
+    --wrong-street: #e3a23b; --pick: #b49bff; --plaque: #24476f; --plaque-ink: #f4f7f8;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1417; --panel: #161d21; --panel-2: #1e272c; --ink: #e4eaed; --muted: #95a3aa; --line: #2a353b;
+  --map-bg: #12181b; --arr-fill: #192125; --arr-focus: #1f292e; --arr-dim: #141b1e;
+  --arr-line: #3d4a51; --arr-band: #1d272b; --arr-label: #64737b; --street-major: #83919a; --street: #3f4b51;
+  --street-ped: #56636a; --rhone: #22405a; --saone: #224641; --accent: #f0645a; --accent-ink: #1a0d0c;
+  --good: #5cc088; --good-soft: rgba(92, 192, 136, .22); --bad: #f0645a; --bad-soft: rgba(240, 100, 90, .2);
+  --wrong-street: #e3a23b; --pick: #b49bff; --plaque: #24476f; --plaque-ink: #f4f7f8;
+  color-scheme: dark;
+}
+
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.45;
+  overflow: hidden;
+}
+.app {
+  height: 100%; box-sizing: border-box;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px;
+}
+.frame {
+  height: 100%; box-sizing: border-box;
+  display: grid; grid-template-rows: auto minmax(0, 1fr);
+  border: 1px solid var(--line); background: var(--panel);
+}
+/* header: brand cell, then one cell per mode, all sharing hairlines */
+.top { display: flex; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px; margin-right: auto; }
+.brand b { font-family: var(--font-display); font-size: 1.45rem; font-weight: 700; letter-spacing: .01em; line-height: 1; }
+.brand span { font: 500 .72rem var(--font-mono); color: var(--muted); letter-spacing: .06em; text-transform: uppercase; }
+.modes { display: flex; }
+.modes button {
+  font: 500 .74rem/1 var(--font-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
+  background: none; border: 0; border-left: 1px solid var(--line); border-radius: 0;
+  padding: 0 22px; cursor: pointer;
+}
+.modes button:hover { color: var(--ink); background: var(--panel-2); }
+.modes button[aria-selected="true"] { color: var(--ink); background: var(--panel-2); box-shadow: inset 0 -2px 0 var(--ink); }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--rhone); outline-offset: -2px; }
+
+.layout { min-height: 0; display: grid; grid-template-columns: 360px minmax(0, 1fr); }
+.panel {
+  min-width: 0; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--line);
+}
+.panel > section { border-bottom: 1px solid var(--line); }
+.panel > section.mastery { border-bottom: 0; }
+
+.settings { display: flex; }
+.settings label {
+  flex: 1 1 0; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px; padding: 10px 14px 8px;
+  font: 500 .66rem var(--font-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
+}
+.settings label:not([hidden]) ~ label:not([hidden]) { border-left: 1px solid var(--line); }
+.timerbar { display: flex; }
+.timerbar span, .timerbar button { font: 500 .7rem/1 var(--font-mono); letter-spacing: .07em; text-transform: uppercase; padding: 11px 0; }
+.timerbar span { color: var(--muted); padding-left: 14px; padding-right: 14px; display: flex; align-items: center; }
+.timerbar button { flex: 1 1 0; background: none; border: 0; border-left: 1px solid var(--line); border-radius: 0; color: var(--muted); cursor: pointer; }
+.timerbar button:hover { color: var(--ink); background: var(--panel-2); }
+.timerbar button[aria-pressed="true"] { color: var(--ink); background: var(--panel-2); box-shadow: inset 0 -2px 0 var(--ink); }
+.clock { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 10px; font: 500 .74rem var(--font-mono); font-variant-numeric: tabular-nums; color: var(--muted); }
+.clock-track { height: 4px; background: var(--line); }
+.clock-track i { display: block; height: 100%; width: 100%; background: var(--ink); }
+.clock-track i.low { background: var(--accent); }
+.clock span { min-width: 9ch; text-align: right; }
+.clock.out span { color: var(--accent); }
+.settings select {
+  font: 500 .92rem var(--font-body); color: var(--ink); background: transparent;
+  border: 0; border-radius: 0; padding: 2px 0; width: 100%; min-width: 0; cursor: pointer;
+}
+.settings select:hover { color: var(--ink); }
+.settings select, .settings option { background: var(--panel); color: var(--ink); }
+input[type="search"] {
+  font: 500 .92rem var(--font-body); color: var(--ink); background: var(--panel);
+  border: 1px solid var(--line); border-radius: 0; padding: 9px 10px; width: 100%; box-sizing: border-box; min-width: 0;
+}
+
+.card { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.eyebrow {
+  display: flex; justify-content: space-between; gap: 8px;
+  font: 500 .68rem var(--font-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.plaque { background: var(--plaque); color: var(--plaque-ink); padding: 4px; }
+.plaque div {
+  border: 1.5px solid color-mix(in srgb, var(--plaque-ink) 70%, transparent);
+  padding: 10px 12px 8px;
+  font-family: var(--font-display); font-weight: 600; font-size: 1.8rem; line-height: 1.05;
+  text-align: center; text-wrap: balance; overflow-wrap: anywhere;
+}
+.hint { color: var(--muted); font-size: .88rem; margin: 0; }
+.row { display: flex; gap: 0; flex-wrap: wrap; align-items: center; }
+.btn {
+  font: 500 .74rem/1 var(--font-mono); letter-spacing: .07em; text-transform: uppercase;
+  border: 1px solid var(--line); border-radius: 0; background: var(--panel); color: var(--ink);
+  padding: 12px 16px; cursor: pointer;
+}
+.btn:hover { background: var(--panel-2); }
+.btn.primary { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.btn.primary:hover { background: color-mix(in srgb, var(--ink) 86%, var(--panel)); }
+.row .btn + .btn { border-left: 0; }
+.btn.link {
+  border: 0; background: none; padding: 4px 0; color: var(--muted);
+  font: 400 .85rem var(--font-body); letter-spacing: 0; text-transform: none; text-decoration: underline;
+}
+.btn.link:hover { color: var(--ink); }
+
+.options { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.options button {
+  font: 500 .92rem/1.25 var(--font-body); text-align: left; color: var(--ink);
+  padding: 10px 12px; min-height: 54px; overflow-wrap: anywhere;
+  border: 0; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); border-radius: 0;
+  background: var(--panel); cursor: pointer;
+}
+.options button:hover:not(:disabled) { background: var(--panel-2); }
+.options button b { display: block; font: 500 .64rem var(--font-mono); color: var(--muted); margin-bottom: 2px; }
+.options button.good { background: var(--good-soft); box-shadow: inset 3px 0 0 var(--good); }
+.options button.bad { background: var(--bad-soft); box-shadow: inset 3px 0 0 var(--bad); }
+.options button:disabled { cursor: default; }
+
+.result { display: grid; grid-template-columns: auto minmax(0, 1fr); border: 1px solid var(--line); }
+.score {
+  display: grid; place-items: center; min-width: 64px; padding: 10px 8px;
+  border-right: 1px solid var(--line);
+  font: 600 1.35rem/1 var(--font-mono); font-variant-numeric: tabular-nums;
+}
+.score.hi { background: var(--good-soft); color: var(--good); }
+.score.mid { background: color-mix(in srgb, var(--wrong-street) 18%, transparent); color: var(--wrong-street); }
+.score.lo { background: var(--bad-soft); color: var(--bad); }
+.result p { margin: 0; padding: 10px 12px; min-width: 0; }
+.result strong { font-size: 1rem; }
+
+.tiers { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); font: 500 .66rem/1.3 var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.tiers span { padding: 6px 8px; }
+.tiers span + span { border-left: 1px solid var(--line); }
+.tiers em { display: block; font-style: normal; color: var(--ink); font-size: .82rem; }
+
+.mastery { padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 8px; font-size: .82rem; color: var(--muted); }
+.bar { height: 4px; background: var(--line); }
+.bar i { display: block; height: 100%; background: var(--good); transition: width .4s; }
+
+.review { margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.review button {
+  width: 100%; display: flex; justify-content: space-between; gap: 8px; text-align: left;
+  font: 500 .9rem var(--font-body); background: none; border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+  padding: 8px 4px; color: var(--ink); cursor: pointer;
+}
+.review button:hover { background: var(--panel-2); }
+.review button span:last-child { font-family: var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.info dl { display: grid; grid-template-columns: auto 1fr; margin: 0; font-size: .9rem; border-top: 1px solid var(--line); }
+.info dt, .info dd { margin: 0; padding: 7px 4px; border-bottom: 1px solid var(--line); }
+.info dt { font: 500 .68rem var(--font-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding-right: 16px; align-self: stretch; display: flex; align-items: center; }
+
+.credits {
+  margin-top: auto; border-top: 1px solid var(--line);
+  padding: 10px 16px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+  font: 400 .66rem var(--font-mono); color: var(--muted);
+}
+.credits a { color: inherit; }
+.credits button { font: inherit; background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; }
+sup { font-size: .6em; }
+
+.mapwrap { position: relative; min-width: 0; min-height: 0; background: var(--map-bg); }
+#map { display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+#map.pan { cursor: grab; }
+.mapbtns {
+  position: absolute; right: 0; bottom: 0; display: flex; flex-direction: column;
+  border-left: 1px solid var(--line); border-top: 1px solid var(--line); background: var(--panel);
+}
+.mapbtns button {
+  width: 40px; height: 40px; border: 0; border-radius: 0; background: var(--panel); color: var(--ink);
+  font: 500 1.05rem/1 var(--font-mono); cursor: pointer; display: grid; place-items: center;
+}
+.mapbtns button + button { border-top: 1px solid var(--line); }
+.mapbtns button:hover { background: var(--panel-2); }
+.legend {
+  position: absolute; left: 0; bottom: 0; display: flex;
+  border-top: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--panel);
+  font: 500 .66rem var(--font-mono); letter-spacing: .05em; text-transform: uppercase; color: var(--muted);
+}
+.legend span { padding: 7px 10px; display: flex; align-items: center; gap: 6px; }
+.legend span + span { border-left: 1px solid var(--line); }
+.legend i { display: inline-block; width: 14px; height: 4px; }
+.tip {
+  position: absolute; pointer-events: none; z-index: 2;
+  background: var(--ink); color: var(--panel); padding: 4px 8px;
+  font: 500 .74rem var(--font-mono); white-space: nowrap; transform: translate(12px, -130%);
+}
+
+@media (max-width: 860px) {
+  .app { padding-block: 8px; }
+  .top { flex-wrap: wrap; }
+  .brand { padding: 10px 12px; }
+  .brand b { font-size: 1.25rem; }
+  .modes { width: 100%; border-top: 1px solid var(--line); }
+  .modes button { flex: 1 1 0; padding: 11px 0; font-size: .68rem; letter-spacing: .05em; }
+  .modes button:first-child { border-left: 0; }
+  .layout { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+  .mapwrap { order: 1; }
+  .panel { order: 2; max-height: 46vh; border-right: 0; border-top: 1px solid var(--line); }
+  .card { padding: 12px; gap: 10px; }
+  .plaque div { font-size: 1.45rem; padding: 7px 10px 6px; }
+  .credits, .legend, .tip { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="app"><div class="frame">
+  <header class="top">
+    <div class="brand"><b>Lyon par cœur</b><span id="brand-count"></span></div>
+    <nav class="modes" role="tablist" aria-label="Mode">
+      <button role="tab" id="m-find" data-mode="find">Find</button>
+      <button role="tab" id="m-name" data-mode="name">Name</button>
+      <button role="tab" id="m-district" data-mode="district">Districts</button>
+      <button role="tab" id="m-explore" data-mode="explore">Explore</button>
+    </nav>
+  </header>
+  <main class="layout">
+    <div class="panel" aria-live="polite">
+      <section class="settings" id="settings">
+        <label for="f-arr">Area
+          <select id="f-arr"></select>
+        </label>
+        <label for="f-level">Streets
+          <select id="f-level">
+            <option value="1">Main roads</option>
+            <option value="2">+ Well-known streets</option>
+            <option value="3">Every street</option>
+          </select>
+        </label>
+      </section>
+      <section class="timerbar" id="timerbar" role="group" aria-label="Timer">
+        <span>Timer</span>
+        <button type="button" data-t="0">Off</button>
+        <button type="button" data-t="30">30 s</button>
+        <button type="button" data-t="15">15 s</button>
+        <button type="button" data-t="5">5 s</button>
+      </section>
+      <section class="card" id="card"></section>
+      <section class="mastery" id="mastery"></section>
+      <div class="credits">
+        <span>Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL) · <span id="osm-date"></span></span>
+        <button id="reset" type="button">Reset progress</button>
+      </div>
+    </div>
+    <div class="mapwrap">
+      <canvas id="map" aria-label="Map of Lyon"></canvas>
+      <div class="tip" id="tip" hidden></div>
+      <div class="legend"><span><i style="background:var(--rhone)"></i>Rhône</span><span><i style="background:var(--saone)"></i>Saône</span><span><i style="background:none;border-top:2px dotted var(--street-ped);height:0"></i>Pedestrian</span></div>
+      <div class="mapbtns">
+        <button type="button" id="z-in" aria-label="Zoom in">+</button>
+        <button type="button" id="z-out" aria-label="Zoom out">−</button>
+        <button type="button" id="z-fit" aria-label="Show whole area">⤢</button>
+      </div>
+    </div>
+  </main>
+</div></div>
+
+<script type="application/json" id="lyon-data">__DATA__</script>
+<script>
+(() => {
+"use strict";
+const RAW = JSON.parse(document.getElementById("lyon-data").textContent);
+
+/* ---------- data ---------- */
+function dec(flat) {
+  const a = new Float32Array(flat.length);
+  let x = 0, y = 0;
+  for (let i = 0; i < flat.length; i += 2) { x += flat[i]; y += flat[i + 1]; a[i] = x; a[i + 1] = y; }
+  return a;
+}
+function bboxOf(arrs) {
+  const b = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const a of arrs) for (let i = 0; i < a.length; i += 2) {
+    if (a[i] < b[0]) b[0] = a[i]; if (a[i + 1] < b[1]) b[1] = a[i + 1];
+    if (a[i] > b[2]) b[2] = a[i]; if (a[i + 1] > b[3]) b[3] = a[i + 1];
+  }
+  return b;
+}
+const ARR = {};
+for (const [n, rings] of Object.entries(RAW.arr)) {
+  const r = rings.map(dec);
+  // label point: area-weighted centroid of the ring
+  let A = 0, cx = 0, cy = 0; const p = r[0];
+  for (let i = 0; i < p.length - 2; i += 2) {
+    const f = p[i] * p[i + 3] - p[i + 2] * p[i + 1];
+    A += f; cx += (p[i] + p[i + 2]) * f; cy += (p[i + 1] + p[i + 3]) * f;
+  }
+  ARR[n] = { n: +n, rings: r, bbox: bboxOf(r), label: [cx / (3 * A), cy / (3 * A)] };
+}
+const RIVERS = { rhone: RAW.rivers.rhone.map(dec), saone: RAW.rivers.saone.map(dec) };
+const CITY_BBOX = bboxOf(Object.values(ARR).flatMap(a => a.rings));
+const level = (rank, len) => (rank <= 1 || len >= 900) ? 1 : (rank <= 2 || len >= 350) ? 2 : 3;
+const STREETS = RAW.streets.map(([name, rank, mask, len, lines], id) => {
+  const L = lines.map(dec);
+  let sx = 0, sy = 0, n = 0;
+  for (const a of L) for (let i = 0; i < a.length; i += 2) { sx += a[i]; sy += a[i + 1]; n++; }
+  const arrs = []; for (let k = 1; k <= 9; k++) if (mask >> k & 1) arrs.push(k);
+  return { id, name, rank, mask, len, lines: L, bbox: bboxOf(L), c: [sx / n, sy / n], level: level(rank, len), arrs };
+});
+const BY_NAME = new Map(STREETS.map(s => [s.name, s]));
+document.getElementById("brand-count").textContent = `${STREETS.length.toLocaleString("en-GB")} streets · 9 arr.`;
+document.getElementById("osm-date").textContent = new Date(RAW.osm).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+
+const arrName = n => n == 1 ? "1<sup>er</sup>" : n + "<sup>e</sup>";
+const arrText = n => n == 1 ? "1er" : n + "e";
+const TYPE = ["Main road", "Major street", "Through street", "Local street", "Pedestrian way"];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmtDist = m => m < 1000 ? Math.round(m / 5) * 5 + " m" : (m / 1000).toFixed(1) + " km";
+
+/* ---------- geometry ---------- */
+function pip(x, y, rings) {
+  let inside = false;
+  for (const r of rings) for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) {
+    const xi = r[i], yi = r[i + 1], xj = r[j], yj = r[j + 1];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function arrAt(x, y) { for (const a of Object.values(ARR)) if (pip(x, y, a.rings)) return a.n; return 0; }
+function nearestOn(street, x, y) {
+  let best = Infinity, bx = 0, by = 0;
+  for (const a of street.lines) {
+    if (a.length === 2) { const d = Math.hypot(a[0] - x, a[1] - y); if (d < best) { best = d; bx = a[0]; by = a[1]; } continue; }
+    for (let i = 0; i < a.length - 2; i += 2) {
+      const x1 = a[i], y1 = a[i + 1], dx = a[i + 2] - x1, dy = a[i + 3] - y1;
+      const l2 = dx * dx + dy * dy;
+      let t = l2 ? ((x - x1) * dx + (y - y1) * dy) / l2 : 0; t = Math.max(0, Math.min(1, t));
+      const px = x1 + t * dx, py = y1 + t * dy, d = Math.hypot(px - x, py - y);
+      if (d < best) { best = d; bx = px; by = py; }
+    }
+  }
+  return { d: best, x: bx, y: by };
+}
+
+/* ---------- progress (per viewer, this browser only) ---------- */
+const KEY = "lyon-par-coeur-v1";
+let stats = {};
+try { stats = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { stats = {}; }
+function saveStats() { try { localStorage.setItem(KEY, JSON.stringify(stats)); } catch (e) {} }
+function record(key, score) {
+  const s = stats[key] || { n: 0, last: 0, best: 0, streak: 0 };
+  s.n++; s.last = score; s.best = Math.max(s.best, score); s.streak = score >= 70 ? s.streak + 1 : 0;
+  stats[key] = s; saveStats();
+}
+
+/* ---------- state ---------- */
+const state = { mode: "find", arr: 0, level: 1, timer: 0, round: null, explore: null };
+let prefs = {};
+try { prefs = JSON.parse(localStorage.getItem(KEY + "-prefs") || "{}") || {}; } catch (e) {}
+if (["find", "name", "district", "explore"].includes(prefs.mode)) state.mode = prefs.mode;
+if (prefs.arr >= 0 && prefs.arr <= 9) state.arr = prefs.arr;
+if (prefs.level >= 1 && prefs.level <= 3) state.level = prefs.level;
+if ([0, 5, 15, 30].includes(prefs.timer)) state.timer = prefs.timer;
+function savePrefs() { try { localStorage.setItem(KEY + "-prefs", JSON.stringify({ mode: state.mode, arr: state.arr, level: state.level, timer: state.timer })); } catch (e) {} }
+
+const pool = () => STREETS.filter(s => s.level <= state.level && (!state.arr || (s.mask >> state.arr & 1)));
+const areaBBox = () => state.arr ? ARR[state.arr].bbox : CITY_BBOX;
+
+function weightedPick(items, n, weightOf) {
+  const left = items.slice(), out = [];
+  while (out.length < n && left.length) {
+    const w = left.map(weightOf), tot = w.reduce((a, b) => a + b, 0);
+    let r = Math.random() * tot, i = 0;
+    while (i < left.length - 1 && (r -= w[i]) > 0) i++;
+    out.push(left.splice(i, 1)[0]);
+  }
+  return out;
+}
+function streetWeight(s) {
+  const st = stats[s.name];
+  if (!st) return 3;
+  if (st.last < 70) return 5;
+  return st.streak >= 2 ? 0.4 : 1.5;
+}
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+function newRound() {
+  if (state.mode === "district") {
+    state.round = { items: shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9]), i: 0, scores: [], answer: null, started: !timedMode() };
+  } else if (state.mode === "find" || state.mode === "name") {
+    const items = weightedPick(pool(), 10, streetWeight);
+    state.round = { items, i: 0, scores: [], answer: null, started: !timedMode() };
+    if (state.mode === "name") state.round.items.forEach(s => s.__opts = null);
+  } else state.round = null;
+  overlay = {}; hover = null;
+  if (state.mode === "name" && state.round && state.round.items.length && state.round.started) showNameQuestion();
+  else animateTo(fitView(areaBBox(), 24));
+  startClock();
+  render();
+}
+
+/* ---------- chrono ---------- */
+let clockRAF = 0;
+const timedMode = () => state.timer > 0 && ["find", "name", "district"].includes(state.mode);
+const elapsed = () => state.round && state.round.t0 ? (performance.now() - state.round.t0) / 1000 : null;
+function startRound() {
+  const r = state.round; if (!r || r.started) return;
+  r.started = true;
+  if (state.mode === "name") showNameQuestion();
+  startClock(); render(); draw();
+}
+// Speed bonus: full points under 3 s, then a gentle slide to 70% at the buzzer.
+// Correctness sets the ceiling; speed only trims it.
+function speedMult(t) {
+  if (!timedMode() || t == null || t <= 3) return 1;
+  return 1 - 0.3 * Math.min(1, (t - 3) / Math.max(0.001, state.timer - 3));
+}
+function withSpeed(base, t) { return Math.round(base * speedMult(t)); }
+function startClock() {
+  cancelAnimationFrame(clockRAF);
+  const r = state.round;
+  if (r) { r.t0 = null; r.deadline = null; }
+  if (!timedMode() || !r || !r.started || r.i >= r.items.length) return;
+  r.t0 = performance.now(); r.deadline = r.t0 + state.timer * 1000;
+  clockRAF = requestAnimationFrame(tick);
+}
+function tick() {
+  const r = state.round;
+  if (!r || r.answer || !r.deadline) return;
+  const left = r.deadline - performance.now();
+  const bar = document.getElementById("clock-bar"), s = document.getElementById("clock-s");
+  if (bar) { bar.style.width = Math.max(0, left / (state.timer * 10)) + "%"; bar.classList.toggle("low", left < state.timer * 300); }
+  if (s) s.textContent = Math.max(0, left / 1000).toFixed(1) + " s";
+  if (left <= 0) { timeOut(); return; }
+  clockRAF = requestAnimationFrame(tick);
+}
+function timeOut() {
+  const r = state.round, it = current();
+  if (!r || r.answer || !it) return;
+  r.pending = null; hover = null;
+  if (state.mode === "district") {
+    r.answer = { t: state.timer, got: 0, base: 0, score: 0, timeout: true }; record("arr:" + it, 0);
+    overlay = { arrGood: it }; draw();
+  } else {
+    r.answer = { t: state.timer, pick: null, d: null, base: 0, score: 0, timeout: true }; record(it.name, 0);
+    overlay = { target: it }; animateTo(fitView(it.bbox, 50, state.mode === "name" ? 1100 : 700));
+  }
+  r.scores.push(0); render();
+}
+function clockHtml() {
+  if (!timedMode()) return "";
+  const r = state.round, a = r.answer;
+  if (!a) return `<div class="clock"><div class="clock-track"><i id="clock-bar"></i></div><span id="clock-s">${state.timer.toFixed(1)} s</span></div>`;
+  const left = a.timeout ? 0 : Math.max(0, 100 - (a.t || 0) / state.timer * 100);
+  return `<div class="clock${a.timeout ? " out" : ""}"><div class="clock-track"><i style="width:${left}%"></i></div><span>${a.timeout ? "Time's up" : a.skipped ? "Skipped" : "in " + (a.t || 0).toFixed(1) + " s"}</span></div>`;
+}
+
+/* ---------- map ---------- */
+const canvas = document.getElementById("map");
+const ctx = canvas.getContext("2d");
+let W = 0, H = 0, DPR = 1;
+let view = { cx: 0, cy: 0, k: 0.1 };
+let overlay = {}; // {target, wrong, arrGood, arrBad, select}
+let hover = null;   // street under the mouse, highlighted before you click
+let C = {};
+function readColors() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ["map-bg", "arr-fill", "arr-focus", "arr-dim", "arr-line", "arr-band", "arr-label", "street-major", "street", "street-ped", "rhone", "saone", "accent", "good", "good-soft", "bad", "bad-soft", "wrong-street", "pick", "ink", "panel"])
+    C[k] = cs.getPropertyValue("--" + k).trim();
+}
+function fitView(b, padPx, minSpan) {
+  let w = b[2] - b[0], h = b[3] - b[1];
+  if (minSpan) { w = Math.max(w, minSpan); h = Math.max(h, minSpan); }
+  const k = Math.min((W - 2 * padPx) / w, (H - 2 * padPx) / h);
+  return { cx: (b[0] + b[2]) / 2, cy: (b[1] + b[3]) / 2, k: clampK(k) };
+}
+const K_MIN = () => Math.min(W / (CITY_BBOX[2] - CITY_BBOX[0]), H / (CITY_BBOX[3] - CITY_BBOX[1])) * 0.5;
+const clampK = k => Math.max(K_MIN(), Math.min(4, k));
+const toScreen = (x, y) => [W / 2 + (x - view.cx) * view.k, H / 2 - (y - view.cy) * view.k];
+const toWorld = (sx, sy) => [view.cx + (sx - W / 2) / view.k, view.cy - (sy - H / 2) / view.k];
+
+let anim = null;
+const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+function animateTo(target) {
+  if (!W) { view = target; return; }
+  if (reduced.matches) { view = target; draw(); return; }
+  const from = { ...view }, t0 = performance.now(), dur = 380;
+  const lz0 = Math.log(from.k), lz1 = Math.log(target.k);
+  cancelAnimationFrame(anim);
+  const step = t => {
+    const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+    view = { cx: from.cx + (target.cx - from.cx) * e, cy: from.cy + (target.cy - from.cy) * e, k: Math.exp(lz0 + (lz1 - lz0) * e) };
+    draw();
+    if (p < 1) anim = requestAnimationFrame(step);
+  };
+  anim = requestAnimationFrame(step);
+}
+let pending = false;
+function requestDraw() { if (!pending) { pending = true; requestAnimationFrame(() => { pending = false; draw(); }); } }
+
+function pathLine(a) {
+  let [sx, sy] = toScreen(a[0], a[1]);
+  ctx.moveTo(sx, sy);
+  for (let i = 2; i < a.length; i += 2) { [sx, sy] = toScreen(a[i], a[i + 1]); ctx.lineTo(sx, sy); }
+}
+function visible(b, m) {
+  const [x0, y0] = toWorld(-m, H + m), [x1, y1] = toWorld(W + m, -m);
+  return !(b[2] < x0 || b[0] > x1 || b[3] < y0 || b[1] > y1);
+}
+// street widths in px: [minimum, growth per metre-per-px, maximum]. Capped so zooming in stays light.
+const ST = [[1.3, 9, 3], [1.1, 7, 2.4], [.9, 5, 1.8], [.6, 3.5, 1.4], [.7, 3, 1.3]];
+const stW = rank => Math.min(ST[rank][2], Math.max(ST[rank][0], ST[rank][1] * view.k));
+function strokeStreet(s, color, px, alpha) {
+  ctx.globalAlpha = alpha == null ? 1 : alpha;
+  ctx.strokeStyle = color; ctx.lineWidth = px;
+  ctx.beginPath(); for (const a of s.lines) pathLine(a); ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+function draw() {
+  if (!W) return;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = C["map-bg"]; ctx.fillRect(0, 0, W, H);
+  ctx.lineJoin = "round"; ctx.lineCap = "butt";
+  const focus = state.mode !== "district" && state.arr;
+  const allRings = () => { ctx.beginPath(); for (const a of Object.values(ARR)) for (const r of a.rings) { pathLine(r); ctx.closePath(); } };
+  // districts
+  for (const a of Object.values(ARR)) {
+    ctx.beginPath(); for (const r of a.rings) { pathLine(r); ctx.closePath(); }
+    ctx.fillStyle = focus ? (a.n === state.arr ? C["arr-focus"] : C["arr-dim"]) : C["arr-fill"]; ctx.fill();
+    if (overlay.arrGood === a.n) { ctx.fillStyle = C["good-soft"]; ctx.fill(); }
+    if (overlay.arrBad === a.n) { ctx.fillStyle = C["bad-soft"]; ctx.fill(); }
+  }
+  // district borders: soft band with a hairline, drawn under rivers and streets
+  allRings(); ctx.strokeStyle = C["arr-band"]; ctx.lineWidth = 6; ctx.stroke();
+  ctx.strokeStyle = C["arr-line"]; ctx.lineWidth = 1; ctx.stroke();
+  // rivers
+  ctx.lineCap = "round";
+  for (const [key, wm] of [["rhone", 170], ["saone", 110]]) {
+    ctx.strokeStyle = C[key]; ctx.lineWidth = Math.max(3, wm * view.k);
+    ctx.beginPath(); for (const r of RIVERS[key]) pathLine(r); ctx.stroke();
+  }
+  ctx.lineCap = "butt";
+  // streets, minor first; pedestrian ways dotted
+  for (let rank = 4; rank >= 0; rank--) {
+    ctx.strokeStyle = rank === 4 ? C["street-ped"] : rank <= 1 ? C["street-major"] : C["street"];
+    ctx.lineWidth = stW(rank);
+    ctx.setLineDash(rank === 4 ? [2, 2.5] : []);
+    for (const faded of focus ? [true, false] : [false]) {
+      ctx.globalAlpha = faded ? 0.35 : 1;
+      ctx.beginPath();
+      for (const s of STREETS) {
+        if (s.rank !== rank) continue;
+        if (focus && ((s.mask >> state.arr & 1) ? faded : !faded)) continue;
+        if (!visible(s.bbox, 20)) continue;
+        for (const a of s.lines) pathLine(a);
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  ctx.setLineDash([]);
+  // district labels, set like the interface's monospace labels
+  if (state.mode !== "district" || state.round?.answer) {
+    const fs = Math.round(Math.max(11, Math.min(22, 500 * view.k)));
+    ctx.font = `500 ${fs}px "IBM Plex Mono", ui-monospace, Menlo, monospace`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round";
+    for (const a of Object.values(ARR)) {
+      const [sx, sy] = toScreen(a.label[0], a.label[1]), txt = arrText(a.n).toUpperCase();
+      ctx.strokeStyle = C["map-bg"]; ctx.lineWidth = 4; ctx.strokeText(txt, sx, sy);
+      ctx.fillStyle = C["arr-label"]; ctx.fillText(txt, sx, sy);
+    }
+  }
+  // highlights: interface colours. ink = pointed at / selected, red = answer, amber = your wrong pick
+  const hiW = s => Math.min(6, stW(s.rank) + 2.4);
+  const hl = (s, col) => { strokeStreet(s, C["map-bg"], hiW(s) + 3); strokeStreet(s, col, hiW(s)); };
+  if (overlay.wrong) hl(overlay.wrong, C["wrong-street"]);
+  if (overlay.target) hl(overlay.target, C["accent"]);
+  const pre = state.mode === "find" && state.round && !state.round.answer ? (state.round.pending || hover) : (state.mode === "explore" && hover !== overlay.select ? hover : null);
+  if (pre) hl(pre, C["ink"]);
+  if (overlay.select) hl(overlay.select, C["ink"]);
+}
+function resize() {
+  const r = canvas.getBoundingClientRect();
+  const first = !W;
+  W = Math.max(1, r.width); H = Math.max(1, r.height); DPR = window.devicePixelRatio || 1;
+  canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
+  if (first) view = (state.mode === "name" && current()) ? fitView(current().bbox, 40, 1100) : fitView(areaBBox(), 24);
+  readColors(); draw();
+}
+new ResizeObserver(resize).observe(canvas);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readColors(); draw(); });
+new MutationObserver(() => { readColors(); draw(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+document.fonts && document.fonts.ready.then(() => draw());
+
+/* ---------- gestures ---------- */
+const ptrs = new Map();
+let g = null;
+function zoomAt(sx, sy, f) {
+  const [wx, wy] = toWorld(sx, sy);
+  view.k = clampK(view.k * f);
+  view.cx = wx - (sx - W / 2) / view.k; view.cy = wy + (sy - H / 2) / view.k;
+}
+const local = e => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+canvas.addEventListener("pointerdown", e => {
+  cancelAnimationFrame(anim);
+  canvas.setPointerCapture(e.pointerId);
+  const p = local(e); ptrs.set(e.pointerId, p);
+  if (ptrs.size === 1) g = { x0: p[0], y0: p[1], t0: performance.now(), moved: false, multi: false, type: e.pointerType };
+  else if (g) { g.multi = true; g.pd = null; }
+});
+canvas.addEventListener("pointermove", e => {
+  if (!ptrs.has(e.pointerId)) return;
+  const prev = ptrs.get(e.pointerId), p = local(e);
+  ptrs.set(e.pointerId, p);
+  if (ptrs.size === 1 && g) {
+    if (Math.hypot(p[0] - g.x0, p[1] - g.y0) > 6) g.moved = true;
+    if (g.moved) { view.cx -= (p[0] - prev[0]) / view.k; view.cy += (p[1] - prev[1]) / view.k; requestDraw(); }
+  } else if (ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()];
+    const d = Math.hypot(a[0] - b[0], a[1] - b[1]), mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+    if (g.pd) {
+      view.cx -= (mx - g.pm[0]) / view.k; view.cy += (my - g.pm[1]) / view.k;
+      zoomAt(mx, my, d / g.pd); requestDraw();
+    }
+    g.pd = d; g.pm = [mx, my];
+  }
+});
+function endPtr(e) {
+  if (!ptrs.has(e.pointerId)) return;
+  ptrs.delete(e.pointerId);
+  if (ptrs.size === 0 && g) {
+    if (!g.moved && !g.multi && performance.now() - g.t0 < 600 && e.type === "pointerup") {
+      const [wx, wy] = toWorld(g.x0, g.y0); onMapTap(wx, wy, g.type);
+    }
+    g = null;
+  } else if (ptrs.size === 1 && g) { g.pd = null; g.moved = true; }
+}
+canvas.addEventListener("pointerup", endPtr);
+const tip = document.getElementById("tip");
+let hoverPos = null, hoverQueued = false;
+function hoverActive() {
+  return (state.mode === "find" && state.round && !state.round.answer && current()) || state.mode === "explore";
+}
+canvas.addEventListener("pointermove", e => {
+  if (e.pointerType !== "mouse" || ptrs.size) return;
+  hoverPos = local(e);
+  if (hoverQueued) return; hoverQueued = true;
+  requestAnimationFrame(() => {
+    hoverQueued = false;
+    const prev = hover;
+    hover = hoverActive() && hoverPos ? streetAt(...toWorld(hoverPos[0], hoverPos[1])) : null;
+    canvas.classList.toggle("over", !!hover);
+    if (state.mode === "explore" && hover) {
+      tip.textContent = hover.name; tip.style.left = hoverPos[0] + "px"; tip.style.top = hoverPos[1] + "px"; tip.hidden = false;
+    } else tip.hidden = true;
+    if (prev !== hover) draw();
+  });
+});
+canvas.addEventListener("pointerleave", () => { hoverPos = null; tip.hidden = true; if (hover) { hover = null; canvas.classList.remove("over"); draw(); } });
+canvas.addEventListener("pointercancel", endPtr);
+canvas.addEventListener("wheel", e => {
+  e.preventDefault(); cancelAnimationFrame(anim);
+  const [sx, sy] = local(e); zoomAt(sx, sy, Math.exp(-e.deltaY * 0.0016)); requestDraw();
+}, { passive: false });
+document.getElementById("z-in").onclick = () => { zoomAt(W / 2, H / 2, 1.6); draw(); };
+document.getElementById("z-out").onclick = () => { zoomAt(W / 2, H / 2, 1 / 1.6); draw(); };
+document.getElementById("z-fit").onclick = () => animateTo(fitView(areaBBox(), 24));
+
+/* ---------- quiz logic ---------- */
+// Find mode is scored by which street you picked, in tiers you can learn:
+// right street 100 · within 250 m 50 · right arrondissement 20 · elsewhere 0
+const TIERS = [[100, "Right street"], [50, "Within 250 m"], [20, "Right arr."], [0, "Elsewhere"]];
+const scoreClass = s => s >= 70 ? "hi" : s >= 20 ? "mid" : "lo";
+function streetAt(x, y, tolPx = 22) {
+  const tol = tolPx / view.k; let best = null, bd = tol;
+  for (const s of STREETS) {
+    const b = s.bbox;
+    if (x < b[0] - tol || x > b[2] + tol || y < b[1] - tol || y > b[3] + tol) continue;
+    const n = nearestOn(s, x, y); if (n.d < bd) { bd = n.d; best = s; }
+  }
+  return best;
+}
+// shortest gap between two streets, sampling one every ~20 m so crossings count as 0
+function streetGap(a, b) {
+  let best = Infinity;
+  for (const l of a.lines) {
+    for (let i = 0; i < l.length; i += 2) {
+      const x1 = l[i], y1 = l[i + 1];
+      const x2 = i + 2 < l.length ? l[i + 2] : x1, y2 = i + 2 < l.length ? l[i + 3] : y1;
+      const steps = Math.max(1, Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 20));
+      for (let k = 0; k < steps; k++) {
+        const d = nearestOn(b, x1 + (x2 - x1) * k / steps, y1 + (y2 - y1) * k / steps).d;
+        if (d < best) best = d;
+      }
+    }
+  }
+  return best;
+}
+function tierScore(pick, target) {
+  if (pick === target) return { score: 100, d: 0 };
+  const d = streetGap(pick, target);
+  if (d <= 250) return { score: 50, d };
+  if (pick.arrs.some(n => target.arrs.includes(n))) return { score: 20, d };
+  return { score: 0, d };
+}
+function current() { const r = state.round; return r && r.i < r.items.length ? r.items[r.i] : null; }
+
+function onMapTap(x, y, ptype) {
+  const r = state.round;
+  if (state.mode === "explore") {
+    const best = streetAt(x, y);
+    state.explore = best; overlay = best ? { select: best } : {}; hover = null;
+    render(); draw(); return;
+  }
+  if (!r || !r.started || r.answer || r.i >= r.items.length) return;
+  if (state.mode === "find") {
+    const s = streetAt(x, y);
+    if (!s) { if (r.pending) { r.pending = null; render(); draw(); } return; }
+    // touch has no hover: first tap highlights, a second tap on the same street answers
+    if (ptype !== "mouse" && r.pending !== s) { r.pending = s; render(); draw(); return; }
+    answerFind(s);
+  } else if (state.mode === "district") {
+    const want = current(), got = arrAt(x, y);
+    if (!got) return; // tapped outside Lyon: ignore
+    const base = got === want ? 100 : 0, tt = elapsed(), sc = withSpeed(base, tt);
+    r.answer = { t: tt, got, base, score: sc }; r.scores.push(sc); record("arr:" + want, sc);
+    overlay = { arrGood: want, arrBad: got === want ? null : got };
+    render(); draw();
+  }
+}
+function answerFind(pick) {
+  const r = state.round, s = current();
+  const { score: base, d } = tierScore(pick, s), tt = elapsed(), score = withSpeed(base, tt);
+  r.answer = { t: tt, pick, d, base, score }; r.pending = null; hover = null;
+  r.scores.push(score); record(s.name, score);
+  overlay = { target: s, wrong: pick === s ? null : pick };
+  const b = s.bbox.slice(), o = pick.bbox;
+  b[0] = Math.min(b[0], o[0]); b[1] = Math.min(b[1], o[1]); b[2] = Math.max(b[2], o[2]); b[3] = Math.max(b[3], o[3]);
+  animateTo(fitView(b, 50, 700));
+  render();
+}
+function showSkip() {
+  const r = state.round, s = current();
+  r.answer = { t: elapsed(), pick: null, d: null, base: 0, score: 0, skipped: true }; r.pending = null; hover = null; r.scores.push(0); record(s.name, 0);
+  overlay = { target: s };
+  animateTo(fitView(s.bbox, 50, 700)); render();
+}
+function nameOptions(s) {
+  if (s.__opts) return s.__opts;
+  let cands = pool().filter(o => o !== s);
+  if (cands.length < 3) cands = STREETS.filter(o => o !== s);
+  cands.sort((a, b) => Math.hypot(a.c[0] - s.c[0], a.c[1] - s.c[1]) - Math.hypot(b.c[0] - s.c[0], b.c[1] - s.c[1]));
+  const near = shuffle(cands.slice(0, 14)).slice(0, 3);
+  return (s.__opts = shuffle([s, ...near]));
+}
+function showNameQuestion() {
+  const s = current(); if (!s) return;
+  overlay = { target: s };
+  animateTo(fitView(s.bbox, 40, 1100));
+}
+function answerName(opt) {
+  const r = state.round, s = current();
+  if (r.answer || !r.started) return;
+  const base = opt === s ? 100 : 0, tt = elapsed(), sc = withSpeed(base, tt);
+  r.answer = { t: tt, pick: opt, base, score: sc }; r.scores.push(sc); record(s.name, sc);
+  overlay = { target: s, wrong: opt === s ? null : opt };
+  if (opt !== s) { const b = s.bbox.slice(), o = opt.bbox; b[0] = Math.min(b[0], o[0]); b[1] = Math.min(b[1], o[1]); b[2] = Math.max(b[2], o[2]); b[3] = Math.max(b[3], o[3]); animateTo(fitView(b, 40, 1100)); }
+  else draw();
+  render();
+}
+function next() {
+  const r = state.round; if (!r) return;
+  r.i++; r.answer = null; r.pending = null; overlay = {}; hover = null;
+  if (r.i < r.items.length) {
+    if (state.mode === "name") showNameQuestion();
+    else animateTo(fitView(areaBBox(), 24));
+  } else animateTo(fitView(areaBBox(), 24));
+  startClock();
+  render(); draw();
+}
+
+/* ---------- panel ---------- */
+const card = document.getElementById("card");
+const mastery = document.getElementById("mastery");
+const settings = document.getElementById("settings");
+const fArr = document.getElementById("f-arr"), fLevel = document.getElementById("f-level"), timerbar = document.getElementById("timerbar");
+fArr.innerHTML = `<option value="0">All of Lyon</option>` + [1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => `<option value="${n}">${arrText(n)} arrondissement</option>`).join("");
+function updateLevelLabels() {
+  const inArea = s => !state.arr || (s.mask >> state.arr & 1);
+  const c = [1, 2, 3].map(l => STREETS.filter(s => s.level <= l && inArea(s)).length);
+  const names = ["Main roads", "+ Well-known streets", "Every street"];
+  [...fLevel.options].forEach((o, i) => o.textContent = `${names[i]} (${c[i]})`);
+}
+
+function render() {
+  document.querySelectorAll(".modes button").forEach(b => b.setAttribute("aria-selected", b.dataset.mode === state.mode));
+  fArr.value = state.arr; fLevel.value = state.level; updateLevelLabels();
+  settings.hidden = state.mode === "district";
+  fLevel.parentElement.hidden = state.mode === "explore";
+  timerbar.hidden = state.mode === "explore";
+  timerbar.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", +b.dataset.t === state.timer));
+  canvas.classList.toggle("pan", state.mode === "name");
+  const r = state.round;
+
+  if (state.mode === "explore") { renderExplore(); renderMastery(); return; }
+  if (!r || !r.items.length) { card.innerHTML = `<p class="hint">No streets match this selection. Try a wider level.</p>`; mastery.innerHTML = ""; return; }
+
+  if (r.i >= r.items.length) { renderSummary(); renderMastery(); return; }
+  const it = current(), num = `${r.i + 1} / ${r.items.length}`;
+  const total = r.scores.reduce((a, b) => a + b, 0);
+  const eyebrow = (label) => `<div class="eyebrow"><span>${label}</span><span>${num} · ${total} pts</span></div>` + clockHtml();
+  const timeNote = a => !timedMode() || !a.base ? "" : a.score < a.base ? ` · −${a.base - a.score} for time` : a.t <= 3 ? " · full points for speed" : "";
+
+  if (!r.started) {
+    const what = state.mode === "district" ? "9 districts" : `${r.items.length} streets`;
+    card.innerHTML = eyebrow("Ready") + `<div class="plaque"><div>${what} · ${state.timer} s each</div></div>
+      <p class="hint">The clock starts when you press Start. After each answer, Next starts the following question straight away.</p>
+      <div class="tiers"><span><em>&lt; 3 s</em>Full points</span><span><em>Slower</em>Down to 70%</span><span><em>Wrong</em>No bonus</span><span><em>Buzzer</em>0</span></div>
+      <div class="row"><button class="btn primary" id="start">Start</button></div>`;
+    const st = document.getElementById("start"); st.onclick = startRound; st.focus({ preventScroll: true });
+    renderMastery(); return;
+  }
+
+  if (state.mode === "find") {
+    let h = eyebrow("Find this street") + plaque(it.name);
+    if (!r.answer && r.pending) {
+      h += `<p class="hint">Highlighted street selected. Tap it again or confirm. Tap elsewhere to pick another.</p><div class="row"><button class="btn primary" id="confirm">Confirm</button><button class="btn" id="cancel">Cancel</button></div>`;
+    } else if (!r.answer) {
+      h += `<p class="hint">Point at a street to highlight it, then click it to answer. On a phone, tap once to highlight and again to answer.</p>`;
+      h += `<div class="tiers">${TIERS.map(([p, l]) => `<span><em>${p}</em>${l}</span>`).join("")}</div>`;
+      h += `<div class="row"><button class="btn link" id="skip">I don't know, show me</button></div>`;
+    } else {
+      const a = r.answer;
+      const msg = !a.pick ? (a.timeout ? "Time's up. Here it is." : "Here it is.") : a.base === 100 ? "Right street." :
+        `You picked ${esc(a.pick.name)}, ${a.d < 15 ? "which touches it" : fmtDist(a.d) + " away"}.`;
+      const why = !a.pick || a.base === 100 ? "" : a.base === 50 ? "Close: within 250 m. " : a.base === 20 ? "Right arrondissement. " : "";
+      h += `<div class="result"><div class="score ${scoreClass(a.score)}">${a.score}</div><p><strong>${msg}</strong><br><span class="hint">${why}${TYPE[it.rank]} · ${it.arrs.map(arrName).join(", ")} arr. · ${fmtDist(it.len)} long${a.pick && a.base < 100 ? " · your pick in amber" : ""}${timeNote(a)}</span></p></div>`;
+      h += `<div class="row"><button class="btn primary" id="next">${r.i + 1 < r.items.length ? "Next street" : "See results"}</button></div>`;
+    }
+    card.innerHTML = h;
+    const cf = document.getElementById("confirm"); if (cf) cf.onclick = () => answerFind(r.pending);
+    const cc = document.getElementById("cancel"); if (cc) cc.onclick = () => { r.pending = null; render(); draw(); };
+  } else if (state.mode === "name") {
+    const opts = nameOptions(it), a = r.answer;
+    let h = eyebrow("Name the red street") + `<div class="options">` + opts.map((o, i) => {
+      let cls = ""; if (a) { if (o === it) cls = "good"; else if (o === a.pick) cls = "bad"; }
+      return `<button data-i="${i}" class="${cls}" ${a ? "disabled" : ""}><b>${i + 1}</b>${esc(o.name)}</button>`;
+    }).join("") + `</div>`;
+    if (a) {
+      h += `<p class="hint">${a.base ? `Correct: ${a.score} pts${timeNote(a)}.` : a.pick ? `It's <strong>${esc(it.name)}</strong>. Your pick, ${esc(a.pick.name)}, is shown in amber.` : `Time's up. It's <strong>${esc(it.name)}</strong>.`} ${it.arrs.map(arrName).join(", ")} arr.</p>`;
+      h += `<div class="row"><button class="btn primary" id="next">${r.i + 1 < r.items.length ? "Next street" : "See results"}</button></div>`;
+    }
+    card.innerHTML = h;
+    card.querySelectorAll(".options button").forEach(b => b.onclick = () => answerName(opts[+b.dataset.i]));
+  } else if (state.mode === "district") {
+    let h = eyebrow("Tap the district") + plaque(`${arrName(it)} arrondissement`, true);
+    if (!r.answer) h += `<p class="hint">Labels are hidden. Tap inside the district.</p>`;
+    else {
+      const a = r.answer;
+      h += `<div class="result"><div class="score ${scoreClass(a.score)}">${a.score}</div><p><strong>${a.base ? "Correct." : a.timeout ? "Time's up." : `That was the ${arrName(a.got)}.`}</strong>${a.base ? `<br><span class="hint">${timeNote(a).replace(" · ", "") || "&nbsp;"}</span>` : `<br><span class="hint">The ${arrName(it)} is shaded green.</span>`}</p></div>`;
+      h += `<div class="row"><button class="btn primary" id="next">${r.i + 1 < r.items.length ? "Next district" : "See results"}</button></div>`;
+    }
+    card.innerHTML = h;
+  }
+  const n = document.getElementById("next"); if (n) { n.onclick = next; n.focus({ preventScroll: true }); }
+  const sk = document.getElementById("skip"); if (sk) sk.onclick = showSkip;
+  renderMastery();
+}
+function plaque(text, html) {
+  return `<div class="plaque"><div>${html ? text : esc(text)}</div></div>`;
+}
+function renderSummary() {
+  const r = state.round, max = r.items.length * 100, tot = r.scores.reduce((a, b) => a + b, 0);
+  const isArr = state.mode === "district";
+  const missed = r.items.map((it, i) => ({ it, sc: r.scores[i] })).filter(m => m.sc < 70);
+  let h = `<div class="eyebrow"><span>Round complete${timedMode() ? ` · ${state.timer} s timer` : ""}</span><span>${tot} / ${max}</span></div>`;
+  h += `<div class="result"><div class="score ${scoreClass(tot / r.items.length)}">${Math.round(tot / r.items.length)}</div><p><strong>${missed.length ? `${missed.length} to review` : "Nothing to review. Well done."}</strong><br><span class="hint">Average score per question.</span></p></div>`;
+  if (missed.length && !isArr) {
+    h += `<p class="hint">Tap one to see it on the map. Missed streets come up more often in later rounds.</p><ul class="review">` +
+      missed.map((m, i) => `<li><button data-i="${i}"><span>${esc(m.it.name)}</span><span>${m.sc}</span></button></li>`).join("") + `</ul>`;
+  }
+  if (missed.length && isArr) h += `<p class="hint">Missed: ${missed.map(m => arrName(m.it)).join(", ")}.</p>`;
+  h += `<div class="row"><button class="btn primary" id="again">Play another round</button></div>`;
+  card.innerHTML = h;
+  card.querySelectorAll(".review button").forEach(b => b.onclick = () => {
+    const s = missed[+b.dataset.i].it; overlay = { target: s }; animateTo(fitView(s.bbox, 50, 800));
+  });
+  document.getElementById("again").onclick = newRound;
+}
+function renderMastery() {
+  if (state.mode === "district") {
+    const known = [1, 2, 3, 4, 5, 6, 7, 8, 9].filter(n => (stats["arr:" + n]?.last ?? 0) >= 70).length;
+    mastery.innerHTML = `<span>You know ${known} of 9 arrondissements</span><div class="bar"><i style="width:${known / 9 * 100}%"></i></div>`;
+    return;
+  }
+  const p = state.mode === "explore" ? STREETS.filter(s => !state.arr || (s.mask >> state.arr & 1)) : pool();
+  const known = p.filter(s => (stats[s.name]?.last ?? 0) >= 70).length;
+  const where = state.arr ? `in the ${arrName(state.arr)}` : "in Lyon";
+  mastery.innerHTML = `<span>You know ${known} of ${p.length} streets ${where} at this level</span><div class="bar"><i style="width:${p.length ? known / p.length * 100 : 0}%"></i></div>`;
+}
+function renderExplore() {
+  const s = state.explore;
+  let h = `<div class="eyebrow"><span>Explore</span><span>${STREETS.length} streets</span></div>`;
+  h += `<label for="q" class="hint">Search a street, or tap one on the map.</label><input type="search" id="q" list="names" placeholder="e.g. Rue Mercière" autocomplete="off">`;
+  if (s) {
+    const st = stats[s.name];
+    h += plaque(s.name) + `<div class="info"><dl><dt>Type</dt><dd>${TYPE[s.rank]}</dd><dt>District</dt><dd>${s.arrs.map(arrName).join(", ")} arrondissement</dd><dt>Length</dt><dd>${fmtDist(s.len)}</dd><dt>Your last score</dt><dd>${st ? st.last : "Not quizzed yet"}</dd></dl></div>`;
+  } else h += `<p class="hint">Use this mode to study an area before quizzing yourself on it. Pick an area above to fade out the rest of the city.</p>`;
+  card.innerHTML = h;
+  const q = document.getElementById("q");
+  const go = () => {
+    const v = q.value.trim().toLowerCase(); if (!v) return;
+    const hit = BY_NAME.get(q.value.trim()) || STREETS.find(x => x.name.toLowerCase() === v) || STREETS.find(x => x.name.toLowerCase().includes(v));
+    if (hit) { state.explore = hit; overlay = { select: hit }; animateTo(fitView(hit.bbox, 50, 700)); render(); }
+  };
+  q.addEventListener("change", go);
+  q.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+}
+const dl = document.createElement("datalist"); dl.id = "names";
+dl.innerHTML = STREETS.map(s => `<option value="${esc(s.name)}">`).join(""); document.body.appendChild(dl);
+
+/* ---------- controls ---------- */
+document.querySelectorAll(".modes button").forEach(b => b.onclick = () => {
+  state.mode = b.dataset.mode; state.explore = null; savePrefs(); newRound();
+});
+fArr.onchange = () => { state.arr = +fArr.value; savePrefs(); if (state.mode === "explore") { animateTo(fitView(areaBBox(), 24)); render(); draw(); } else newRound(); };
+fLevel.onchange = () => { state.level = +fLevel.value; savePrefs(); newRound(); };
+timerbar.querySelectorAll("button").forEach(b => b.onclick = () => { state.timer = +b.dataset.t; savePrefs(); newRound(); });
+const reset = document.getElementById("reset");
+reset.onclick = () => {
+  if (reset.dataset.armed) { stats = {}; saveStats(); reset.textContent = "Progress cleared"; delete reset.dataset.armed; render(); setTimeout(() => reset.textContent = "Reset progress", 2000); }
+  else { reset.dataset.armed = "1"; reset.textContent = "Tap again to clear all progress"; setTimeout(() => { if (reset.dataset.armed) { delete reset.dataset.armed; reset.textContent = "Reset progress"; } }, 4000); }
+};
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+  const r = state.round;
+  if (state.mode === "name" && r && !r.answer && current() && /^[1-4]$/.test(e.key)) { const o = nameOptions(current())[+e.key - 1]; if (o) answerName(o); }
+});
+
+newRound();
+})();
+</script>
+</body>
+</html>

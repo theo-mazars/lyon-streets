@@ -1,0 +1,11 @@
+# Build output (rebuilt by scripts/build.py and by the Dockerfile)
+dist/
+
+# Raw Overpass exports are large (several MB); keep only the processed data
+export*.json
+*.osm
+*.osm.json
+
+__pycache__/
+*.pyc
+.DS_Store

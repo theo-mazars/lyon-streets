@@ -1,0 +1,7 @@
+.git
+dist
+docs
+*.md
+__pycache__
+*.pyc
+export*.json
